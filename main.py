@@ -1,3 +1,4 @@
+import requests
 import os
 from dotenv import load_dotenv
 
@@ -7,6 +8,19 @@ from aiogram.types import Message , InlineKeyboardMarkup, InlineKeyboardButton ,
 
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+
+api_url_d = 'https://v6.exchangerate-api.com/v6/48ac1b7b7ccbe1bb14441612/latest/USD'
+api_url_e = 'https://v6.exchangerate-api.com/v6/48ac1b7b7ccbe1bb14441612/latest/EUR'
+
+
+def get_curs(url):
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+    else:
+        print(response.status_code)
+    return data['conversion_rates']['MDL']
+
 
 # Создаём состояния
 class ConvertState(StatesGroup):
@@ -42,14 +56,12 @@ repeat_button = InlineKeyboardButton(
 keyboard_repeat = InlineKeyboardMarkup(inline_keyboard=[[repeat_button]])
 
 
-CURS_D = 17
-CURS_E = 18
-
-
 # Этот хэндлер будет срабатывать на команду "/start"
 @dp.message(Command(commands='start'))
 async def process_start_command(message: Message):
-    await message.answer('Привет!\nЯ бот курса валют!\nОтправь мне команду /curs и я отправлю тебе нынешний курс')
+    await message.answer('Привет!\nЯ бот курса валют!\nОтправь мне команду /curs и я отправлю тебе нынешний курс\n'
+                         f'Курс долара - {get_curs(api_url_d)}\n'
+                         f'Курс евро - {get_curs(api_url_e)}')
 
 
 # Этот хэндлер будет срабатывать на команду "/help"
@@ -76,7 +88,7 @@ async def process_usd_click(callback: CallbackQuery, state: FSMContext):
 @dp.message(ConvertState.waiting_usd)
 async def process_usd_amount(message: Message, state: FSMContext):
     amount = float(message.text)
-    result = amount * CURS_D
+    result = amount * get_curs(api_url_d)
     await message.answer(text=f'{amount} USD = {result} MDL', reply_markup=keyboard_repeat)
     await state.clear()  # сбрасываем состояние
 
@@ -89,7 +101,7 @@ async def process_eur_click(callback: CallbackQuery, state: FSMContext):
 @dp.message(ConvertState.waiting_eur)
 async def process_eur_amount(message: Message, state: FSMContext):
     amount = float(message.text)
-    result = amount * CURS_E
+    result = amount * get_curs(api_url_e)
     await message.answer(text=f'{amount} EUR = {result} MDL', reply_markup=keyboard_repeat)
     await state.clear()  # сбрасываем состояние
 
